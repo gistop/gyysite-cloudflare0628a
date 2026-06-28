@@ -1,0 +1,35 @@
+{
+  "name": "online-code-preview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    ".",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "dev:api": "npm --workspace apps/api run dev",
+    "start:api": "npm --workspace apps/api start",
+    "compose:up": "docker compose up --build",
+    "cf:pages:build": "npm run build",
+    "cf:pages:deploy": "npm run build && npx wrangler pages deploy dist --project-name gyysite",
+    "cf:worker:dev": "npx wrangler dev --config wrangler.worker.toml",
+    "cf:worker:deploy": "npx wrangler deploy --config wrangler.worker.toml"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vue/compiler-sfc": "^3.5.25",
+    "esbuild-wasm": "^0.27.1",
+    "grapesjs": "^0.23.2",
+    "lucide-react": "^0.556.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "vite": "^7.2.7",
+    "vue": "^3.5.25"
+  },
+  "devDependencies": {}
+}

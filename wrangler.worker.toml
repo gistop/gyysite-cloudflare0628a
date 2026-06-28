@@ -1,0 +1,42 @@
+name = "gyysite-api"
+main = "workers/api.js"
+compatibility_date = "2026-06-27"
+
+[vars]
+CORS_ORIGIN = "*"
+DEEPSEEK_MODEL = "deepseek-v4-pro"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+GITHUB_BRANCH = "main"
+GITHUB_PUBLISH_PREFIX = ""
+GITHUB_PROJECT_REPO = "testsite"
+CLOUDFLARE_PAGES_PROJECT_NAME = ""
+R2_ASSET_PREFIX = "assets"
+R2_MAX_ASSET_BYTES = "20971520"
+
+[[d1_databases]]
+binding = "AI_JOBS_DB"
+database_name = "gyysite-ai-jobs"
+database_id = "90fe02d4-51e9-41ae-acb3-7a60a351c0d9"
+
+[[r2_buckets]]
+binding = "AI_JOB_BUCKET"
+bucket_name = "gyysite-ai-jobs"
+
+[[queues.producers]]
+binding = "AI_JOBS_QUEUE"
+queue = "gyysite-ai-jobs"
+
+[[queues.consumers]]
+queue = "gyysite-ai-jobs"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+
+[durable_objects]
+bindings = [
+  { name = "AI_JOB_DO", class_name = "AiJobDurableObject" }
+]
+
+[[migrations]]
+tag = "v1-ai-job-durable-object"
+new_sqlite_classes = ["AiJobDurableObject"]

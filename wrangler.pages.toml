@@ -1,0 +1,8 @@
+name = "gyysite"
+compatibility_date = "2026-06-27"
+pages_build_output_dir = "dist"
+
+[vars]
+# Set this in Cloudflare Pages to the deployed Worker API origin.
+# Example: https://gyysite-api.your-subdomain.workers.dev
+VITE_API_BASE_URL = ""
