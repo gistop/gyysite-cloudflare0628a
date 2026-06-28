@@ -1253,6 +1253,7 @@ function App() {
   const [editorPosition, setEditorPosition] = useState({ x: 84, y: 548 });
   const frameRef = useRef(null);
   const aiEventSourceRef = useRef(null);
+  const aiPollRef = useRef(null);
 
   const fileNames = useMemo(() => Object.keys(files), [files]);
   const previewSandbox =
@@ -1558,6 +1559,61 @@ function App() {
       aiEventSourceRef.current.close();
       aiEventSourceRef.current = null;
     }
+    if (aiPollRef.current) {
+      window.clearInterval(aiPollRef.current);
+      aiPollRef.current = null;
+    }
+  }
+
+  function updateAiJobProgress(job) {
+    if (!job) return;
+    setAiJob(job);
+    if (job.stage) {
+      const percent = Number.isFinite(job.progress) ? ` ${job.progress}%` : "";
+      setAiSummary(`${job.stage}${percent}`);
+    }
+  }
+
+  async function handleFinishedAiJob(jobId, job) {
+    closeAiEvents();
+    setAiJob(job);
+    setAiSummary(job?.summary || "AI edit completed.");
+    try {
+      await loadAiJobResult(jobId, job?.summary);
+    } catch (err) {
+      setError(err.message || String(err));
+    } finally {
+      setIsAiEditing(false);
+    }
+  }
+
+  function pollAiJob(jobId) {
+    if (aiPollRef.current) window.clearInterval(aiPollRef.current);
+
+    aiPollRef.current = window.setInterval(async () => {
+      try {
+        const response = await fetch(apiUrl(`/api/ai/jobs/${jobId}`));
+        const result = await readJsonResponse(response, "AI job status failed");
+        if (!response.ok || !result.ok) throw new Error(result.error || "AI job status failed");
+
+        const job = result.job;
+        updateAiJobProgress(job);
+
+        if (job?.status === "succeeded") {
+          await handleFinishedAiJob(jobId, job);
+        } else if (job?.status === "failed") {
+          closeAiEvents();
+          setError(job.error || "AI edit failed");
+          setIsAiEditing(false);
+        } else if (job?.status === "cancelled") {
+          closeAiEvents();
+          setAiSummary("AI edit cancelled.");
+          setIsAiEditing(false);
+        }
+      } catch (err) {
+        setAiSummary(`Checking AI job status... ${err.message || String(err)}`);
+      }
+    }, 3000);
   }
 
   async function applyAiEditResult(result, fallbackSummary) {
@@ -1599,11 +1655,7 @@ function App() {
 
     const handleProgress = (event) => {
       const data = JSON.parse(event.data || "{}");
-      setAiJob(data);
-      if (data.stage) {
-        const percent = Number.isFinite(data.progress) ? ` ${data.progress}%` : "";
-        setAiSummary(`${data.stage}${percent}`);
-      }
+      updateAiJobProgress(data);
     };
 
     for (const eventName of ["connected", "queued", "running", "streaming", "cancel_requested"]) {
@@ -1620,16 +1672,7 @@ function App() {
 
     source.addEventListener("succeeded", async (event) => {
       const data = JSON.parse(event.data || "{}");
-      setAiJob(data);
-      setAiSummary(data.summary || "AI edit completed.");
-      closeAiEvents();
-      try {
-        await loadAiJobResult(jobId, data.summary);
-      } catch (err) {
-        setError(err.message || String(err));
-      } finally {
-        setIsAiEditing(false);
-      }
+      await handleFinishedAiJob(jobId, data);
     });
 
     source.addEventListener("failed", (event) => {
@@ -1643,6 +1686,8 @@ function App() {
     source.onerror = () => {
       setAiSummary("Connection interrupted, checking job status...");
     };
+
+    pollAiJob(jobId);
   }
 
   async function editHtmlWithAi() {
